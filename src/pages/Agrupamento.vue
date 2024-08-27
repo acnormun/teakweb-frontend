@@ -3,9 +3,18 @@
     <q-card>
       <q-card-section>
         <div class="text-h6">Análise por Data</div>
+        {{ filteredData }}
       </q-card-section>
 
       <q-card-section>
+        <!-- Filtro por id -->
+        <q-input
+        :model-value="searchId"
+        label="Filtrar por ID"
+        type="text"
+        dense
+        @update:model-value="filterId"
+      />
         <!-- Filtro de Data -->
         <q-select
           v-model="selectedPeriod"
@@ -14,6 +23,14 @@
           outlined
           dense
         />
+        <!-- Filtro por status -->
+        <q-select
+        v-model="selectedPeriod"
+        :options="periodOptions"
+        label="Filtrar por"
+        outlined
+        dense
+      />
       </q-card-section>
 
       <q-card-section>
@@ -32,11 +49,21 @@ import { backupService } from '../services/backupService';
 import { Agrupamento } from 'src/types/agrupamento.type';
 import { format, parseISO } from 'date-fns';
 
-// Estado reativo para os dados do backup
 const backupData = ref<Agrupamento[]>([]);
+const searchId = ref<string | number | null>('')
 const selectedPeriod = ref<string>('day');
+const filteredData = ref<Agrupamento[]>([])
 
-// Opções de filtro
+onMounted(async () => {
+  try {
+    backupData.value = await backupService.getBackupData();
+    filteredData.value = backupData.value
+    updateChart();
+  } catch (error) {
+    console.error('Erro ao carregar os dados do backup:', error);
+  }
+});
+
 const periodOptions = ref([
   { label: 'Por Dia', value: 'day' },
   { label: 'Por Mês', value: 'month' },
@@ -63,19 +90,24 @@ const groupByPeriod = (data: Agrupamento[], period: string) => {
   }, {});
 };
 
-// Variável para armazenar a instância do gráfico atual
+const filterId = (id: string | number | null) => {
+  searchId.value = id
+  if(id){
+    filteredData.value = backupData.value.filter(item => item.id?.toLocaleLowerCase().includes(id?.toString().toLocaleLowerCase()))
+    return;
+  }
+  filteredData.value = backupData.value
+}
+
 let currentChart: Chart | null = null;
 
-// Criação do gráfico
 const createChart = (labels: string[], data: number[]) => {
   const ctx = (document.querySelector('canvas') as HTMLCanvasElement).getContext('2d');
   if (ctx) {
-    // Se já existir um gráfico, destrua-o antes de criar um novo
     if (currentChart) {
       currentChart.destroy();
     }
 
-    // Criação de um novo gráfico
     currentChart = new Chart(ctx, {
       type: 'bar',
       data: {
@@ -96,21 +128,11 @@ const createChart = (labels: string[], data: number[]) => {
   }
 };
 
-// Atualiza o gráfico quando os dados ou o filtro mudam
 const updateChart = () => {
   const groupedData = groupByPeriod(backupData.value, selectedPeriod.value);
   createChart(Object.keys(groupedData), Object.values(groupedData));
 };
 
-// Carrega os dados do backup ao montar o componente
-onMounted(async () => {
-  try {
-    backupData.value = await backupService.getBackupData();
-    updateChart();
-  } catch (error) {
-    console.error('Erro ao carregar os dados do backup:', error);
-  }
-});
 
 // Observa mudanças no filtro e atualiza o gráfico
 watch(selectedPeriod, updateChart);

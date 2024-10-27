@@ -100,7 +100,7 @@ const columns = [
     field: (row: Agrupamento) => row.id
   },
   {
-    name: 'group',
+    name: 'agrupamento',
     label: 'Agrupamento',
     field: (row: Agrupamento) => row.agrupamento,
     sortable: true
@@ -119,7 +119,7 @@ const columns = [
   }
 ]
 
-const visibleColumns = ref(['id', 'group'])
+const visibleColumns = ref(['id', 'agrupamento'])
 
 const statusOptions = ['aberto', 'fechado', 'vendido']
 
@@ -150,9 +150,22 @@ const filter = (type: keyof typeof backupData.value[0], value: string | number |
 
 }
 
+const filterSelectedKeys = (data:Agrupamento[], selectedKeys:string[]) => {
+  return data.map(item => {
+    const filteredItem = {};
+    selectedKeys.forEach(key => {
+      if (item[key] !== undefined) {
+        filteredItem[key] = item[key];
+      }
+    });
+    return filteredItem;
+  });
+};
+
 const downloadXLSX = () => {
   if(filteredData.value.length > 0){
-    exportToExcel(filteredData.value)
+    const data = filterSelectedKeys(selected.value, visibleColumns.value)
+    exportToExcel(data)
   }
 }
 

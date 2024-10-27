@@ -17,6 +17,10 @@
           />
 
           <q-select clearable dense v-model="appliedFilters.status" class="filters__status" :options="statusOptions" label="Status" @update:model-value="(e) => filter('status', e)"/>
+
+            <div>
+              <q-btn color="primary" icon="cloud_upload" @click="downloadXLSX">Download xlsx</q-btn>
+            </div>
         </div>
 
         <div class="q-pa-md">
@@ -83,6 +87,7 @@ import { onMounted, ref, Ref } from 'vue';
 import { backupService } from '../services/backupService';
 import { Agrupamento } from 'src/types/agrupamento.type';
 import { formatDate } from 'src/utils/formatDate';
+import { exportToExcel } from 'src/utils/exportExcel';
 const backupData = ref<Agrupamento[]>([]);
 const filteredData = ref<Agrupamento[]>([])
 const  pagination= ref({ rowsPerPage: 1000 })
@@ -135,7 +140,7 @@ onMounted(async () => {
 
 const filter = (type: keyof typeof backupData.value[0], value: string | number | null) => {
   appliedFilters.value[type] = value ? value.toString() : '';
-  filteredData.value = backupData.value.filter(item =>
+  filteredData.value = backupData.value.filter((item: Agrupamento) =>
     Object.entries(appliedFilters.value).every(([key, filterValue]) =>
       filterValue
         ? item[key as keyof typeof item]?.toString().toLocaleLowerCase().includes(filterValue.toLocaleLowerCase())
@@ -143,6 +148,12 @@ const filter = (type: keyof typeof backupData.value[0], value: string | number |
     )
   );
 
+}
+
+const downloadXLSX = () => {
+  if(filteredData.value.length > 0){
+    exportToExcel(filteredData.value)
+  }
 }
 
 </script>

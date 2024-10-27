@@ -15,7 +15,7 @@
           Teakweb
         </q-toolbar-title>
 
-        <div>Quasar v{{ $q.version }}</div>
+        <div>Teakweb</div>
       </q-toolbar>
     </q-header>
 

@@ -2,18 +2,22 @@
   <q-page padding>
     <q-card>
       <q-card-section>
-        <div class="text-h6">Análise por Data</div>
-
+        <div class="text-h6">Agrupamentos</div>
       </q-card-section>
 
       <q-card-section>
-        <q-input
-        :model-value="searchId"
-        label="Filtrar por ID"
-        type="text"
-        dense
-        @update:model-value="filterId"
-        />
+        <div class="filters">
+          <q-input
+          :model-value="appliedFilters.id"
+          class="filters__id"
+          label="Filtrar por ID"
+          type="text"
+          dense
+          @update:model-value="(e) => filter('id', e)"
+          />
+
+          <q-select clearable dense v-model="appliedFilters.status" class="filters__status" :options="statusOptions" label="Status" @update:model-value="(e) => filter('status', e)"/>
+        </div>
 
         <div class="q-pa-md">
           <q-table
@@ -32,7 +36,7 @@
             no-data-label="I didn't find anything for you"
           >
           <template v-slot:top="props">
-            <div class="col-2 q-table__title">Treats</div>
+            <div class="col-2 q-table__title">Colunas</div>
 
             <q-space />
 
@@ -63,7 +67,6 @@
           </template>
         </q-table>
         </div>
-        {{ filteredData }}
       </q-card-section>
 
       <q-card-section>
@@ -76,11 +79,11 @@
 
 
 <script lang="ts" setup>
-import { onMounted, ref } from 'vue';
+import { onMounted, ref, Ref } from 'vue';
 import { backupService } from '../services/backupService';
 import { Agrupamento } from 'src/types/agrupamento.type';
+import { formatDate } from 'src/utils/formatDate';
 const backupData = ref<Agrupamento[]>([]);
-const searchId = ref<string | number | null>('')
 const filteredData = ref<Agrupamento[]>([])
 const  pagination= ref({ rowsPerPage: 1000 })
 const selected = ref([])
@@ -106,10 +109,19 @@ const columns = [
     name: 'createdAt',
     label: 'Criado em',
     field: (row: Agrupamento) => row.CreateAt,
+    sortable: true,
+    format: (val: string) => formatDate(val)
   }
 ]
 
 const visibleColumns = ref(['id', 'group'])
+
+const statusOptions = ['aberto', 'fechado', 'vendido']
+
+const appliedFilters: Ref<Partial<Agrupamento>> = ref({
+  id: '',
+  status: ''
+})
 
 onMounted(async () => {
   try {
@@ -121,14 +133,33 @@ onMounted(async () => {
 });
 
 
-const filterId = (id: string | number | null) => {
-  searchId.value = id
-  if(id){
-    filteredData.value = backupData.value.filter(item => item.id?.toLocaleLowerCase().includes(id?.toString().toLocaleLowerCase()))
-  }else {
-    filteredData.value = backupData.value
-  }
+const filter = (type: keyof typeof backupData.value[0], value: string | number | null) => {
+  appliedFilters.value[type] = value ? value.toString() : '';
+  filteredData.value = backupData.value.filter(item =>
+    Object.entries(appliedFilters.value).every(([key, filterValue]) =>
+      filterValue
+        ? item[key as keyof typeof item]?.toString().toLocaleLowerCase().includes(filterValue.toLocaleLowerCase())
+        : true
+    )
+  );
 
 }
 
 </script>
+
+<style lang="scss">
+.filters{
+  display: flex;
+  flex-direction: row;
+  gap: 1rem;
+
+  &__id{
+    min-width: 30vw;
+  }
+
+  &__status{
+    min-width: 20vw;
+  }
+
+}
+</style>

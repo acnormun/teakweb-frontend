@@ -1,189 +1,156 @@
 <template>
-  <q-page padding>
+  <q-page class="q-pa-md">
     <q-card>
       <q-card-section>
-        <div class="text-h6">Agrupamentos</div>
-      </q-card-section>
+        <q-select v-model="selectedColumns" :options="columnOptions" multiple emit-value map-options
+          label="Select columns" outlined dense />
 
-      <q-card-section>
-        <div class="filters">
-          <q-input
-          :model-value="appliedFilters.id"
-          class="filters__id"
-          label="Filtrar por ID"
-          type="text"
-          dense
-          @update:model-value="(e) => filter('id', e)"
-          />
-
-          <q-select clearable dense v-model="appliedFilters.status" class="filters__status" :options="statusOptions" label="Status" @update:model-value="(e) => filter('status', e)"/>
-
-            <div>
-              <q-btn color="primary" icon="cloud_upload" @click="downloadXLSX">Download xlsx</q-btn>
-            </div>
+        <div class="q-mt-md">
+          <q-btn color="primary" icon="file_download" label="Export CSV" @click="exportCSV" class="q-mr-sm" />
+          <q-btn color="red" icon="picture_as_pdf" label="Export PDF" @click="exportPDF" />
         </div>
-
-        <div class="q-pa-md">
-          <q-table
-            row-key="id"
-            :rows="filteredData"
-            :columns="columns"
-            v-model:pagination="pagination"
-            :rows-per-page-options="[0]"
-            v-model:selected="selected"
-            :visible-columns="visibleColumns"
-            style="height: 400px"
-            flat bordered
-            virtual-scroll
-            selection="multiple"
-            binary-state-sort
-            no-data-label="I didn't find anything for you"
-          >
-          <template v-slot:top="props">
-            <div class="col-2 q-table__title">Colunas</div>
-
-            <q-space />
-
-            <div v-if="$q.screen.gt.xs" class="col">
-              <q-toggle v-for="item in columns" :key="item.name" v-model="visibleColumns" :val="item.name" :label="item.label" />
-            </div>
-            <q-select
-              v-else
-              v-model="visibleColumns"
-              multiple
-              borderless
-              dense
-              options-dense
-              :display-value="$q.lang.table.columns"
-              emit-value
-              map-options
-              :options="columns"
-              option-value="name"
-              style="min-width: 150px"
-            />
-
-            <q-btn
-              flat round dense
-              :icon="props.inFullscreen ? 'fullscreen_exit' : 'fullscreen'"
-              @click="props.toggleFullscreen"
-              class="q-ml-md"
-            />
-          </template>
-        </q-table>
-        </div>
-      </q-card-section>
-
-      <q-card-section>
-        <canvas ref="chart"></canvas>
       </q-card-section>
     </q-card>
+
+    <q-table flat bordered title="Groupings List" :rows="groupings" :columns="filteredColumns" row-key="id"
+      :loading="loading" />
   </q-page>
 </template>
 
+<script>
+import { ref, computed, onMounted } from 'vue';
+import axios from 'axios';
+import Papa from 'papaparse';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 
+export default {
+  setup() {
+    const groupings = ref([]);
+    const loading = ref(false);
+    const columnOptions = ref([]);
+    const selectedColumns = ref([]);
+    const allColumns = ref([]);
+    const graphqlEndpoint = 'http://127.0.0.1:5000/graphql';
 
-<script lang="ts" setup>
-import { onMounted, ref, Ref } from 'vue';
-import { backupService } from '../services/backupService';
-import { Agrupamento } from 'src/types/agrupamento.type';
-import { formatDate } from 'src/utils/formatDate';
-import { exportToExcel } from 'src/utils/exportExcel';
-const backupData = ref<Agrupamento[]>([]);
-const filteredData = ref<Agrupamento[]>([])
-const  pagination= ref({ rowsPerPage: 1000 })
-const selected = ref([])
+    const fetchAvailableFields = async () => {
+      try {
+        const response = await axios.post(graphqlEndpoint, {
+          query: `
+          {
+            __type(name: "Agrupamento") {
+              fields {
+                name
+              }
+            }
+          }`
+        });
 
-const columns = [
-  {
-    name: 'id',
-    label: '#ID',
-    field: (row: Agrupamento) => row.id
-  },
-  {
-    name: 'agrupamento',
-    label: 'Agrupamento',
-    field: (row: Agrupamento) => row.agrupamento,
-    sortable: true
-  },
-  {
-    name: 'status',
-    label: 'Status',
-    field: (row: Agrupamento) => row.status,
-  },
-  {
-    name: 'createdAt',
-    label: 'Criado em',
-    field: (row: Agrupamento) => row.CreateAt,
-    sortable: true,
-    format: (val: string) => formatDate(val)
-  }
-]
+        const fields = response.data.data.__type.fields.map(f => f.name);
 
-const visibleColumns = ref(['id', 'agrupamento'])
+        allColumns.value = fields.map(field => ({
+          name: field,
+          label: field.replace(/_/g, ' ').toUpperCase(),
+          field: field,
+          align: 'left',
+          sortable: true
+        }));
 
-const statusOptions = ['aberto', 'fechado', 'vendido']
+        columnOptions.value = fields.map(field => ({
+          label: field.replace(/_/g, ' ').toUpperCase(),
+          value: field
+        }));
 
-const appliedFilters: Ref<Partial<Agrupamento>> = ref({
-  id: '',
-  status: ''
-})
+        selectedColumns.value = fields;
 
-onMounted(async () => {
-  try {
-    backupData.value = await backupService.getBackupData();
-    filteredData.value = backupData.value
-  } catch (error) {
-    console.error('Erro ao carregar os dados do backup:', error);
-  }
-});
-
-
-const filter = (type: keyof typeof backupData.value[0], value: string | number | null) => {
-  appliedFilters.value[type] = value ? value.toString() : '';
-  filteredData.value = backupData.value.filter((item: Agrupamento) =>
-    Object.entries(appliedFilters.value).every(([key, filterValue]) =>
-      filterValue
-        ? item[key as keyof typeof item]?.toString().toLocaleLowerCase().includes(filterValue.toLocaleLowerCase())
-        : true
-    )
-  );
-
-}
-
-const filterSelectedKeys = (data:Agrupamento[], selectedKeys:string[]) => {
-  return data.map(item => {
-    const filteredItem = {};
-    selectedKeys.forEach(key => {
-      if (item[key] !== undefined) {
-        filteredItem[key] = item[key];
+        fetchGroupings(fields);
+      } catch (error) {
+        console.error('Error fetching available fields:', error);
       }
+    };
+
+    const fetchGroupings = async (fields) => {
+      loading.value = true;
+      try {
+        const query = `
+        {
+          agrupamentos {
+            ${fields.join('\n')}
+          }
+        }`;
+
+        const response = await axios.post(graphqlEndpoint, { query });
+
+        groupings.value = response.data.data.agrupamentos;
+      } catch (error) {
+        console.error('Error fetching groupings:', error);
+      } finally {
+        loading.value = false;
+      }
+    };
+
+    const exportCSV = () => {
+      if (!groupings.value.length) return;
+
+      const filteredData = groupings.value.map(row =>
+        Object.fromEntries(selectedColumns.value.map(col => [col, row[col]]))
+      );
+
+      const csv = Papa.unparse(filteredData);
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'groupings.csv';
+      link.click();
+    };
+
+    const exportPDF = () => {
+      if (!groupings.value.length) return;
+
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.width;
+      const pageHeight = doc.internal.pageSize.height;
+
+      doc.text('Agrupamentos', 14, 10);
+
+      const tableData = groupings.value.map(row =>
+        selectedColumns.value.map(col => row[col] || '')
+      );
+
+      const tableHeaders = selectedColumns.value.map(col =>
+        col.replace(/_/g, ' ').toUpperCase()
+      );
+
+      doc.autoTable({
+        head: [tableHeaders],
+        body: tableData,
+        margin: { top: 15 },
+        didDrawPage: (data) => {
+          // 🔹 Confidentiality Footer (Appears on Every Page)
+          doc.setFontSize(10);
+          const footerText =
+            'This document is the intellectual property of Serraria Cáceres. Unauthorized disclosure, reproduction, or distribution is strictly prohibited.';
+
+          const textWidth = doc.getStringUnitWidth(footerText) * doc.internal.getFontSize() / doc.internal.scaleFactor;
+          const xPosition = ((pageWidth - textWidth) / 2) + 10;
+          const yPosition = pageHeight - 10;
+
+          doc.text(footerText, xPosition, yPosition, { maxWidth: pageWidth - 20 });
+        }
+      });
+
+      doc.save('groupings.pdf');
+    };
+
+
+    const filteredColumns = computed(() => {
+      return allColumns.value.filter(col => selectedColumns.value.includes(col.field));
     });
-    return filteredItem;
-  });
+
+    onMounted(fetchAvailableFields);
+
+    return { groupings, columnOptions, selectedColumns, filteredColumns, loading, exportCSV, exportPDF };
+  }
 };
-
-const downloadXLSX = () => {
-  if(filteredData.value.length > 0){
-    const data = filterSelectedKeys(selected.value, visibleColumns.value)
-    exportToExcel(data)
-  }
-}
-
 </script>
-
-<style lang="scss">
-.filters{
-  display: flex;
-  flex-direction: row;
-  gap: 1rem;
-
-  &__id{
-    min-width: 30vw;
-  }
-
-  &__status{
-    min-width: 20vw;
-  }
-
-}
-</style>

@@ -1,5 +1,5 @@
 <template>
-  <p>alossss</p>
+  <p>Página de autenticação</p>
 </template>
 
 <script setup lang="ts">

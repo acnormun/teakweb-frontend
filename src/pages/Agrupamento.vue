@@ -81,7 +81,7 @@ export default {
         const response = await axios.post(graphqlEndpoint, {
           query: `
           {
-            __type(name: "Agrupamento") {
+            __type(name: "agrupamentos") {
               fields {
                 name
               }

@@ -1,14 +1,6 @@
 <template>
-  <q-item
-    clickable
-    tag="a"
-    target="_blank"
-    @click="redirectTo(link)"
-  >
-    <q-item-section
-      v-if="icon"
-      avatar
-    >
+  <q-item clickable v-ripple :to="link">
+    <q-item-section avatar>
       <q-icon :name="icon" />
     </q-item-section>
 
@@ -20,27 +12,14 @@
 </template>
 
 <script setup lang="ts">
-import { useRouter } from 'vue-router'
-defineOptions({
-  name: 'EssentialLink'
-});
-
+// ✅ Define the props interface and export it
 export interface EssentialLinkProps {
   title: string;
-  caption?: string;
-  link?: string;
-  icon?: string;
-};
-
-withDefaults(defineProps<EssentialLinkProps>(), {
-  caption: '',
-  link: '',
-  icon: '',
-});
-
-const router = useRouter();
-
-function redirectTo(link: string){
-  router.push(`/${link}`)
+  caption: string;
+  icon: string;
+  link: string;
 }
+
+// ✅ Define the props using `defineProps`
+defineProps<EssentialLinkProps>();
 </script>

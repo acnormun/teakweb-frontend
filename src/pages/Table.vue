@@ -3,20 +3,62 @@
     <q-page-container>
       <q-page class="q-pa-md">
         <q-card>
-          <q-card-section class="row q-gutter-md">
-            <!-- Column Selection -->
+          <q-card-section class="row q-col-gutter-md">
             <q-select v-model="selectedColumns" :options="columnOptions" multiple emit-value map-options
-              label="Select columns" outlined dense class="col-3" />
-
-            <!-- Dynamic Filters for Each Column -->
+              label="Select columns" outlined dense class="col-10" />
             <template v-for="(filter, key) in filters" :key="key">
-              <q-select v-if="filter.type === 'select'" v-model="filter.value" :options="filter.options"
-                :label="`Filter by ${key.replace(/_/g, ' ')}`" outlined multiple dense class="col-3" />
+              <!-- 🔹 Multi-Select Dropdown (Unchanged) -->
+              <q-select
+                v-if="filter.type === 'select'"
+                v-model="filter.value"
+                :options="filter.options"
+                :label="`Filter by ${key.replace(/_/g, ' ')}`"
+                outlined
+                multiple
+                dense
+                class="col-5"
+              />
 
-              <q-input v-else v-model="filter.value" :label="`Search ${key.replace(/_/g, ' ')}`" outlined dense
-                class="col-3" />
+              <!-- 🔹 Date Range Picker (Single Input, Shows Selected Range) -->
+              <div v-else-if="filter.type === 'date'" class="col-5 column q-gutter-xs">
+                <q-item-label class="q-mb-xs text-grey-6">{{ key.replace(/_/g, ' ') }}</q-item-label>
+
+                <q-input
+                  v-model="filter.dateRangeText"
+                  outlined
+                  dense
+                  readonly
+                  label="Select Date Range"
+                  class="cursor-pointer"
+                  @click="$refs[`datePopup-${key}`].show()"
+                >
+                  <template v-slot:append>
+                    <q-icon name="event" class="cursor-pointer" @click.stop="$refs[`datePopup-${key}`].show()" />
+                  </template>
+                </q-input>
+
+                <q-popup-proxy ref="datePopup" cover transition-show="scale" transition-hide="scale">
+                  <q-date
+                    v-model="filter.dateRange"
+                    range
+                    mask="YYYY-MM-DD"
+                    @update:model-value="updateDateRange(key)"
+                  />
+                </q-popup-proxy>
+              </div>
+
+              <!-- 🔹 Standard Text Search (Unchanged) -->
+              <q-input
+                v-else
+                v-model="filter.value"
+                :label="`Search ${key.replace(/_/g, ' ')}`"
+                outlined
+                dense
+                class="col-5"
+              />
             </template>
           </q-card-section>
+
 
           <!-- 🔹 Export Buttons -->
           <q-card-section class="row q-gutter-md">
@@ -132,11 +174,29 @@ const generateFilters = () => {
   Object.keys(firstRow).forEach((key) => {
     const uniqueValues = [...new Set(groupings.value.map((item) => item[key]))];
 
-    filters.value[key] = uniqueValues.length <= 5
-      ? { type: "select", options: uniqueValues, value: [] } // ✅ Multi-select stores an array
-      : { type: "text", value: "" };
+    if (key.toLowerCase().includes("date") || key.toLowerCase().includes("created_at") || key.toLowerCase().includes("updated_at")) {
+      filters.value[key] = {
+        type: "date",
+        dateRange: null, // Stores the selected date range
+        dateRangeText: "Select Date Range", // ✅ Default placeholder
+      };
+    } else {
+      filters.value[key] = uniqueValues.length <= 5
+        ? { type: "select", options: uniqueValues, value: [] }
+        : { type: "text", value: "" };
+    }
   });
 };
+
+const updateDateRange = (key) => {
+  const filter = filters.value[key];
+  if (filter.dateRange && filter.dateRange.from && filter.dateRange.to) {
+    filter.dateRangeText = `${filter.dateRange.from} - ${filter.dateRange.to}`;
+  } else {
+    filter.dateRangeText = "Select Date Range";
+  }
+};
+
 
 
 // Filter Data
@@ -146,15 +206,24 @@ const filteredGroupings = computed(() => {
       const filter = filters.value[key];
 
       if (filter.type === "select") {
-        return filter.value.length === 0 || filter.value.includes(row[key]); // ✅ Correct filtering for multi-select
+        return filter.value.length === 0 || filter.value.includes(row[key]); // ✅ Multi-select filtering
       } else if (filter.type === "text") {
         return filter.value ? row[key]?.toString().toLowerCase().includes(filter.value.toLowerCase()) : true;
+      } else if (filter.type === "date") {
+        if (!filter.dateRange || !filter.dateRange.from || !filter.dateRange.to) return true;
+
+        const rowDate = new Date(row[key]);
+        const startDate = filter.dateRange.from ? new Date(filter.dateRange.from) : null;
+        const endDate = filter.dateRange.to ? new Date(filter.dateRange.to) : null;
+
+        return (!startDate || rowDate >= startDate) && (!endDate || rowDate <= endDate); // ✅ Date range filtering
       }
 
       return true;
     });
   });
 });
+
 
 const filteredColumns = computed(() => {
   return allColumns.value.filter((col) => selectedColumns.value.includes(col.field));

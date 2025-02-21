@@ -42,7 +42,7 @@ async function getRoutes(): Promise<RouteRecordRaw[]> {
   const dynamicRoutes: RouteRecordRaw[] = schemas.map((schema) => ({
     path: `/${schema}`,
     name: schema.charAt(0).toUpperCase() + schema.slice(1),
-    component: () => import('pages/Agrupamento.vue'),
+    component: () => import('pages/Table.vue'),
     props: (route) => ({ schemaName: schema }), // ✅ Pass schema name as a prop
   }));
 

@@ -11,7 +11,7 @@
             <!-- Dynamic Filters for Each Column -->
             <template v-for="(filter, key) in filters" :key="key">
               <q-select v-if="filter.type === 'select'" v-model="filter.value" :options="filter.options"
-                :label="`Filter by ${key.replace(/_/g, ' ')}`" outlined dense clearable class="col-3" />
+                :label="`Filter by ${key.replace(/_/g, ' ')}`" outlined multiple dense class="col-3" />
 
               <q-input v-else v-model="filter.value" :label="`Search ${key.replace(/_/g, ' ')}`" outlined dense
                 class="col-3" />
@@ -25,12 +25,21 @@
           </q-card-section>
         </q-card>
 
-        <q-table flat bordered title="Groupings List" :rows="filteredGroupings" :columns="filteredColumns" row-key="id"
+        <q-table flat bordered :title='stringUtils.capitalizeFirstLetter(schemaName)' :rows="filteredGroupings" :columns="filteredColumns" row-key="id"
           :loading="loading" />
+
+        <!-- 🔹 Display Total Count of Filtered Items -->
+        <q-card-section class="text-right q-mt-md">
+          <q-banner rounded class="bg-grey-2 text-dark">
+            <q-icon name="list" size="20px" class="q-mr-sm" />
+            <strong>Total Items:</strong> {{ filteredGroupings.length }}
+          </q-banner>
+        </q-card-section>
       </q-page>
     </q-page-container>
   </q-layout>
 </template>
+
 
 <script setup>
 import { ref, computed, onMounted, watch } from "vue";
@@ -38,6 +47,7 @@ import axios from "axios";
 import Papa from "papaparse"; // CSV Export
 import jsPDF from "jspdf"; // PDF Export
 import "jspdf-autotable"; // Table Plugin for jsPDF
+import stringUtils from "src/utils/strTools";
 
 // ✅ Receive `schemaName` from route props
 const props = defineProps({
@@ -123,10 +133,11 @@ const generateFilters = () => {
     const uniqueValues = [...new Set(groupings.value.map((item) => item[key]))];
 
     filters.value[key] = uniqueValues.length <= 5
-      ? { type: "select", options: uniqueValues, value: null }
+      ? { type: "select", options: uniqueValues, value: [] } // ✅ Multi-select stores an array
       : { type: "text", value: "" };
   });
 };
+
 
 // Filter Data
 const filteredGroupings = computed(() => {
@@ -135,7 +146,7 @@ const filteredGroupings = computed(() => {
       const filter = filters.value[key];
 
       if (filter.type === "select") {
-        return filter.value ? row[key] === filter.value : true;
+        return filter.value.length === 0 || filter.value.includes(row[key]); // ✅ Correct filtering for multi-select
       } else if (filter.type === "text") {
         return filter.value ? row[key]?.toString().toLowerCase().includes(filter.value.toLowerCase()) : true;
       }

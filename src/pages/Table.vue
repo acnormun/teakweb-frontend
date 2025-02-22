@@ -69,13 +69,13 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from "vue";
-import axios from "axios";
-import Papa from "papaparse"; // CSV Export
-import jsPDF from "jspdf"; // PDF Export
-import "jspdf-autotable"; // Table Plugin for jsPDF
-import stringUtils from "src/utils/strTools";
-import ChartComponent from "../components/Chart.vue";
+import { ref, computed, onMounted, watch } from 'vue';
+import axios from 'axios';
+import Papa from 'papaparse'; // CSV Export
+import jsPDF from 'jspdf'; // PDF Export
+import 'jspdf-autotable'; // Table Plugin for jsPDF
+import stringUtils from 'src/utils/strTools';
+import ChartComponent from '../components/Chart.vue';
 
 const props = defineProps({
   schemaName: {
@@ -90,7 +90,7 @@ const columnOptions = ref([]);
 const selectedColumns = ref([]);
 const allColumns = ref([]);
 const filters = ref({});
-const graphqlEndpoint = "http://127.0.0.1:5000/graphql";
+const graphqlEndpoint = 'http://127.0.0.1:5000/graphql';
 
 
 
@@ -108,14 +108,24 @@ const computedChartType = computed(() => determineChartType(selectedChartColumn.
 
 // Função para determinar o tipo de gráfico com base na coluna
 const determineChartType = (column) => {
-  if (!column || !groupings.value.length) return "bar";
-  const sampleValue = groupings.value[0][column];
+  // Normaliza a coluna, caso ela venha como objeto { value: 'nome' }
+  const colName = (typeof column === 'object' && column.value) ? column.value : column;
+  if (!colName || !groupings.value.length) return "bar";
+
+  const sampleValue = groupings.value[0][colName];
+  const fullDateRegex = /^\d{4}-\d{2}-\d{2}/;
+  const monthYearRegex = /^\d{2}-\d{4}$/;
+
   if (typeof sampleValue === "number") return "bar";
-  if (typeof sampleValue === "string" && sampleValue.match(/^\d{4}-\d{2}-\d{2}/))
-    return "line";
+  if (
+    typeof sampleValue === "string" &&
+    (fullDateRegex.test(sampleValue) || monthYearRegex.test(sampleValue))
+  ) {
+    return "bar";
+  }
+
   return "pie";
 };
-
 // Fetch Available Fields
 const fetchAvailableFields = async () => {
   try {
@@ -134,14 +144,14 @@ const fetchAvailableFields = async () => {
 
     allColumns.value = fields.map((field) => ({
       name: field,
-      label: field.replace(/_/g, " ").toUpperCase(),
+      label: field.replace(/_/g, ' ').toUpperCase(),
       field: field,
-      align: "left",
+      align: 'left',
       sortable: true,
     }));
 
     columnOptions.value = fields.map((field) => ({
-      label: field.replace(/_/g, " ").toUpperCase(),
+      label: field.replace(/_/g, ' ').toUpperCase(),
       value: field,
     }));
 
@@ -149,7 +159,7 @@ const fetchAvailableFields = async () => {
 
     fetchGroupings(fields);
   } catch (error) {
-    console.error("Error fetching available fields:", error);
+    console.error('Error fetching available fields:', error);
   }
 };
 
@@ -160,7 +170,7 @@ const fetchGroupings = async (fields) => {
     const query = `
     {
       ${props.schemaName} {
-        ${fields.join("\n")}
+        ${fields.join('\n')}
       }
     }`;
 
@@ -168,7 +178,7 @@ const fetchGroupings = async (fields) => {
     groupings.value = response.data?.data?.[props.schemaName] || [];
     generateFilters();
   } catch (error) {
-    console.error("Error fetching groupings:", error);
+    console.error('Error fetching groupings:', error);
   } finally {
     loading.value = false;
   }
@@ -183,14 +193,14 @@ const generateFilters = () => {
   keys.forEach((key) => {
     const isDateField = groupings.value.some((row) => {
       const value = row[key];
-      return typeof value === "string" && dateRegex.test(value);
+      return typeof value === 'string' && dateRegex.test(value);
     });
 
     if (isDateField) {
       filters.value[key] = {
-        type: "date",
+        type: 'date',
         dateRange: null,
-        dateRangeText: "Select Date Range",
+        dateRangeText: 'Select Date Range',
       };
     } else {
       const uniqueValues = [
@@ -198,8 +208,8 @@ const generateFilters = () => {
       ];
       filters.value[key] =
         uniqueValues.length <= 5
-          ? { type: "select", options: uniqueValues, value: [] }
-          : { type: "text", value: "" };
+          ? { type: 'select', options: uniqueValues, value: [] }
+          : { type: 'text', value: '' };
     }
   });
 };
@@ -209,7 +219,7 @@ const updateDateRange = (key) => {
   if (filter.dateRange && filter.dateRange.from && filter.dateRange.to) {
     filter.dateRangeText = `${filter.dateRange.from} - ${filter.dateRange.to}`;
   } else {
-    filter.dateRangeText = "Select Date Range";
+    filter.dateRangeText = 'Select Date Range';
   }
 };
 
@@ -218,13 +228,13 @@ const filteredGroupings = computed(() => {
     return Object.keys(filters.value).every((key) => {
       const filter = filters.value[key];
 
-      if (filter.type === "select") {
+      if (filter.type === 'select') {
         return filter.value.length === 0 || filter.value.includes(row[key]);
-      } else if (filter.type === "text") {
+      } else if (filter.type === 'text') {
         return filter.value
           ? row[key]?.toString().toLowerCase().includes(filter.value.toLowerCase())
           : true;
-      } else if (filter.type === "date") {
+      } else if (filter.type === 'date') {
         if (!filter.dateRange || !filter.dateRange.from || !filter.dateRange.to)
           return true;
 
@@ -246,13 +256,13 @@ const filteredColumns = computed(() => {
 // Propriedades computadas para separar filtros
 const nonDateFilterKeys = computed(() => {
   return Object.keys(filters.value).filter(
-    (key) => filters.value[key].type !== "date"
+    (key) => filters.value[key].type !== 'date'
   );
 });
 
 const dateFilterKeys = computed(() => {
   return Object.keys(filters.value).filter(
-    (key) => filters.value[key].type === "date"
+    (key) => filters.value[key].type === 'date'
   );
 });
 
@@ -264,10 +274,10 @@ const exportCSV = () => {
   );
 
   const csv = Papa.unparse(filteredData);
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-  const link = document.createElement("a");
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
   link.href = URL.createObjectURL(blob);
-  link.download = "groupings.csv";
+  link.download = 'groupings.csv';
   link.click();
 };
 
@@ -278,14 +288,14 @@ const exportPDF = () => {
   const pageWidth = doc.internal.pageSize.width;
   const pageHeight = doc.internal.pageSize.height;
 
-  doc.text("Groupings List", 14, 10);
+  doc.text('Groupings List', 14, 10);
 
   const tableData = filteredGroupings.value.map((row) =>
-    selectedColumns.value.map((col) => row[col] || "")
+    selectedColumns.value.map((col) => row[col] || '')
   );
 
   const tableHeaders = selectedColumns.value.map((col) =>
-    col.replace(/_/g, " ").toUpperCase()
+    col.replace(/_/g, ' ').toUpperCase()
   );
 
   doc.autoTable({
@@ -295,7 +305,7 @@ const exportPDF = () => {
     didDrawPage: (data) => {
       doc.setFontSize(10);
       const footerText =
-        "This document is the intellectual property of Serraria Cáceres. Unauthorized disclosure, reproduction, or distribution is strictly prohibited.";
+        'This document is the intellectual property of Serraria Cáceres. Unauthorized disclosure, reproduction, or distribution is strictly prohibited.';
 
       const textWidth =
         doc.getStringUnitWidth(footerText) *
@@ -308,24 +318,66 @@ const exportPDF = () => {
     },
   });
 
-  doc.save("groupings.pdf");
+  doc.save('groupings.pdf');
 };
 
 const prepareChartData = (column) => {
-  // Normaliza a coluna para ser uma string
   const colName = (typeof column === 'object' && column.value) ? column.value : column;
-  console.log('aqui', colName);
   if (!colName) return { labels: [], datasets: [] };
 
   const counts = {};
-  groupings.value.forEach(row => {
-    console.log('row', row);
-    // Checa se o valor é nulo ou undefined
-    const val = (row[colName] === null || row[colName] === undefined) ? 'Desconhecido' : row[colName];
-    counts[val] = (counts[val] || 0) + 1;
-  });
+  const data = filteredGroupings.value;
 
-  console.log(colName);
+  // Verifica se a coluna possui um formato de data
+  const sampleValue = data[0] ? data[0][colName] : null;
+  const fullDateRegex = /^\d{4}-\d{2}-\d{2}/;
+  const monthYearRegex = /^\d{2}-\d{4}$/;
+  const isDateColumn = typeof sampleValue === 'string' && (fullDateRegex.test(sampleValue) || monthYearRegex.test(sampleValue));
+  console.log(JSON.stringify(isDateColumn))
+
+  if (isDateColumn) {
+    // Se o valor estiver no formato "MM-YYYY", agrupa diretamente pelo valor
+    if (monthYearRegex.test(sampleValue)) {
+      data.forEach(row => {
+        const label = row[colName] ? row[colName] : 'Desconhecido';
+        counts[label] = (counts[label] || 0) + 1;
+      });
+    } else if (fullDateRegex.test(sampleValue)) {
+      // Para datas no formato "YYYY-MM-DD", converte para objetos Date e decide o agrupamento
+      const dates = data
+        .map(row => new Date(row[colName]))
+        .filter(date => !isNaN(date));
+      if (dates.length === 0) return { labels: [], datasets: [] };
+
+      const minDate = new Date(Math.min(...dates));
+      const maxDate = new Date(Math.max(...dates));
+
+      // Se todas as datas estiverem no mesmo mês, agrupa por dia; caso contrário, agrupa por mês (ex.: "YYYY-MM")
+      const groupByDay = (minDate.getFullYear() === maxDate.getFullYear() &&
+                          minDate.getMonth() === maxDate.getMonth());
+
+      data.forEach(row => {
+        const dateObj = new Date(row[colName]);
+        if (isNaN(dateObj)) return;
+        let label;
+        if (groupByDay) {
+          // Agrupa por dia – formato "YYYY-MM-DD"
+          label = dateObj.toISOString().substring(0, 10);
+        } else {
+          // Agrupa por mês – formato "YYYY-MM"
+          label = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}`;
+        }
+        counts[label] = (counts[label] || 0) + 1;
+      });
+    }
+  } else {
+    // Para colunas que não são data, agrupa os valores normalmente
+    data.forEach(row => {
+      const val = (row[colName] === null || row[colName] === undefined) ? 'Desconhecido' : row[colName];
+      counts[val] = (counts[val] || 0) + 1;
+    });
+  }
+
   return {
     labels: Object.keys(counts),
     datasets: [
@@ -337,6 +389,7 @@ const prepareChartData = (column) => {
     ]
   };
 };
+
 
 watch(() => props.schemaName, () => {
   fetchAvailableFields();
@@ -354,14 +407,11 @@ onMounted(fetchAvailableFields);
 
 .filter-block {
   width: 300px;
-  /* ajuste conforme necessário */
   min-height: 100px;
-  /* altura mínima (pode ser definida conforme a altura do filtro maior) */
   display: flex;
   flex-direction: column;
   justify-content: center;
   border: 1px solid #eee;
-  /* opcional: para visualização */
   padding: 8px;
   box-sizing: border-box;
 }

@@ -2,117 +2,49 @@
   <q-layout view="hHh lpR fF">
     <q-page-container>
       <q-page class="q-pa-md">
-        <!-- Card com filtros e exportações -->
         <q-card>
           <q-card-section class="row q-col-gutter-md">
-            <q-select
-              v-model="selectedColumns"
-              :options="columnOptions"
-              multiple
-              emit-value
-              map-options
-              label="Select columns"
-              outlined
-              dense
-              class="col-10"
-            />
+            <q-select v-model="selectedColumns" :options="columnOptions" multiple emit-value map-options
+              label="Select columns" outlined dense class="col-10" />
 
             <!-- Container para todos os filtros -->
             <div class="filter-container">
-              <!-- Filtros não de data -->
-              <div
-                v-for="key in nonDateFilterKeys"
-                :key="key"
-                class="filter-block"
-              >
-                <q-select
-                  v-if="filters[key].type === 'select'"
-                  v-model="filters[key].value"
-                  :options="filters[key].options"
-                  :label="`Filter by ${key.replace(/_/g, ' ')}`"
-                  outlined
-                  multiple
-                  dense
-                />
-                <q-input
-                  v-else-if="filters[key].type === 'text'"
-                  v-model="filters[key].value"
-                  :label="`Search ${key.replace(/_/g, ' ')}`"
-                  outlined
-                  dense
-                />
+              <!-- Filtros que não são de data -->
+              <div v-for="key in nonDateFilterKeys" :key="key" class="filter-block">
+                <q-select v-if="filters[key].type === 'select'" v-model="filters[key].value"
+                  :options="filters[key].options" :label="`Filter by ${key.replace(/_/g, ' ')}`" outlined multiple
+                  dense />
+                <q-input v-else-if="filters[key].type === 'text'" v-model="filters[key].value"
+                  :label="`Search ${key.replace(/_/g, ' ')}`" outlined dense />
               </div>
 
               <!-- Filtros de data -->
-              <div
-                v-for="key in dateFilterKeys"
-                :key="key"
-                class="filter-block"
-              >
+              <div v-for="key in dateFilterKeys" :key="key" class="filter-block">
                 <q-item-label class="q-mb-xs text-grey-6">
                   {{ key.replace(/_/g, ' ') }}
                 </q-item-label>
-                <q-input
-                  v-model="filters[key].dateRangeText"
-                  outlined
-                  dense
-                  readonly
-                  label="Select Date Range"
-                  class="cursor-pointer"
-                  @click="$refs[`datePopup-${key}`].show()"
-                >
+                <q-input v-model="filters[key].dateRangeText" outlined dense readonly label="Select Date Range"
+                  class="cursor-pointer" @click="$refs[`datePopup-${key}`].show()">
                   <template v-slot:append>
-                    <q-icon
-                      name="event"
-                      class="cursor-pointer"
-                      @click.stop="$refs[`datePopup-${key}`].show()"
-                    />
+                    <q-icon name="event" class="cursor-pointer" @click.stop="$refs[`datePopup-${key}`].show()" />
                   </template>
                 </q-input>
-                <q-popup-proxy
-                  :ref="`datePopup-${key}`"
-                  cover
-                  transition-show="scale"
-                  transition-hide="scale"
-                >
-                  <q-date
-                    v-model="filters[key].dateRange"
-                    range
-                    mask="YYYY-MM-DD"
-                    @update:model-value="updateDateRange(key)"
-                  />
+                <q-popup-proxy :ref="`datePopup-${key}`" cover transition-show="scale" transition-hide="scale">
+                  <q-date v-model="filters[key].dateRange" range mask="YYYY-MM-DD"
+                    @update:model-value="updateDateRange(key)" />
                 </q-popup-proxy>
               </div>
             </div>
           </q-card-section>
 
           <q-card-section class="row q-gutter-md">
-            <q-btn
-              color="primary"
-              icon="file_download"
-              label="Export CSV"
-              @click="exportCSV"
-              class="q-mr-sm"
-            />
-            <q-btn
-              color="red"
-              icon="picture_as_pdf"
-              label="Export PDF"
-              @click="exportPDF"
-            />
+            <q-btn color="primary" icon="file_download" label="Export CSV" @click="exportCSV" class="q-mr-sm" />
+            <q-btn color="red" icon="picture_as_pdf" label="Export PDF" @click="exportPDF" />
           </q-card-section>
         </q-card>
 
-        <!-- Tabela -->
-        <q-table
-          flat
-          bordered
-          :title="stringUtils.capitalizeFirstLetter(schemaName)"
-          :rows="filteredGroupings"
-          :columns="filteredColumns"
-          row-key="id"
-          :loading="loading"
-        />
+        <q-table flat bordered :title="stringUtils.capitalizeFirstLetter(schemaName)" :rows="filteredGroupings"
+          :columns="filteredColumns" row-key="id" :loading="loading" />
 
         <q-card-section class="text-right q-mt-md">
           <q-banner rounded class="bg-grey-2 text-dark">
@@ -120,27 +52,15 @@
             <strong>Total Items:</strong> {{ filteredGroupings.length }}
           </q-banner>
         </q-card-section>
-
         <!-- Seção para o gráfico -->
         <q-card class="q-mt-md">
           <q-card-section>
-            <q-select
-              v-model="selectedChartColumn"
-              :options="chartColumnOptions"
-              label="Selecione a coluna para o gráfico"
-              outlined
-              dense
-            />
+            <q-select v-model="selectedChartColumn" :options="chartColumnOptions"
+              label="Selecione a coluna para o gráfico" outlined dense />
           </q-card-section>
           <q-card-section style="height: 400px;">
-            <!-- O uso da diretiva :key força a recriação do componente ao mudar a coluna -->
-            <ChartComponent
-              v-if="selectedChartColumn"
-              :key="selectedChartColumn"
-              :chart-type="computedChartType"
-              :chart-data="computedChartData"
-              :chart-options="chartOptions"
-            />
+            <ChartComponent v-if="selectedChartColumn" :key="selectedChartColumn" :chart-type="computedChartType"
+              :chart-data="computedChartData" :chart-options="chartOptions" />
           </q-card-section>
         </q-card>
       </q-page>
@@ -155,7 +75,7 @@ import Papa from "papaparse"; // CSV Export
 import jsPDF from "jspdf"; // PDF Export
 import "jspdf-autotable"; // Table Plugin for jsPDF
 import stringUtils from "src/utils/strTools";
-import ChartComponent from "../components/Chart.vue"; // Ajuste o caminho conforme necessário
+import ChartComponent from "../components/Chart.vue";
 
 const props = defineProps({
   schemaName: {
@@ -172,16 +92,15 @@ const allColumns = ref([]);
 const filters = ref({});
 const graphqlEndpoint = "http://127.0.0.1:5000/graphql";
 
+
+
 // Variáveis para o gráfico
 const selectedChartColumn = ref(null);
 const chartOptions = {
   responsive: true,
   maintainAspectRatio: false
 };
-
-const chartColumnOptions = computed(() => {
-  return selectedColumns.value.map(col => ({ label: col, value: col }));
-});
+const chartColumnOptions = computed(() => columnOptions.value);
 
 // Propriedades computadas para o ChartComponent
 const computedChartData = computed(() => prepareChartData(selectedChartColumn.value));
@@ -197,35 +116,7 @@ const determineChartType = (column) => {
   return "pie";
 };
 
-// Função para preparar os dados para o gráfico
-const prepareChartData = (column) => {
-  // Normaliza a coluna para ser uma string
-  const colName = (typeof column === 'object' && column.value) ? column.value : column;
-  console.log('aqui', colName);
-  if (!colName) return { labels: [], datasets: [] };
-
-  const counts = {};
-  groupings.value.forEach(row => {
-    console.log('row', row);
-    // Checa se o valor é nulo ou undefined
-    const val = (row[colName] === null || row[colName] === undefined) ? 'Desconhecido' : row[colName];
-    counts[val] = (counts[val] || 0) + 1;
-  });
-
-  console.log(colName);
-  return {
-    labels: Object.keys(counts),
-    datasets: [
-      {
-        label: `Distribuição de ${colName}`,
-        backgroundColor: ['#f87979', '#a1cfff', '#caffbf'],
-        data: Object.values(counts)
-      }
-    ]
-  };
-};
-
-// Busca dos campos disponíveis
+// Fetch Available Fields
 const fetchAvailableFields = async () => {
   try {
     const response = await axios.post(graphqlEndpoint, {
@@ -255,7 +146,6 @@ const fetchAvailableFields = async () => {
     }));
 
     selectedColumns.value = fields;
-    selectedChartColumn.value = fields[0]; // Seleciona a primeira coluna para o gráfico
 
     fetchGroupings(fields);
   } catch (error) {
@@ -263,7 +153,7 @@ const fetchAvailableFields = async () => {
   }
 };
 
-// Busca dos dados
+// Fetch Data
 const fetchGroupings = async (fields) => {
   loading.value = true;
   try {
@@ -284,7 +174,7 @@ const fetchGroupings = async (fields) => {
   }
 };
 
-// Gera filtros dinamicamente
+// Generate Filters Dynamically
 const generateFilters = () => {
   const dateRegex = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/;
   if (!groupings.value.length) return;
@@ -353,6 +243,19 @@ const filteredColumns = computed(() => {
   return allColumns.value.filter((col) => selectedColumns.value.includes(col.field));
 });
 
+// Propriedades computadas para separar filtros
+const nonDateFilterKeys = computed(() => {
+  return Object.keys(filters.value).filter(
+    (key) => filters.value[key].type !== "date"
+  );
+});
+
+const dateFilterKeys = computed(() => {
+  return Object.keys(filters.value).filter(
+    (key) => filters.value[key].type === "date"
+  );
+});
+
 const exportCSV = () => {
   if (!filteredGroupings.value.length) return;
 
@@ -389,21 +292,50 @@ const exportPDF = () => {
     head: [tableHeaders],
     body: tableData,
     margin: { top: 15 },
-    didDrawPage: () => {
+    didDrawPage: (data) => {
       doc.setFontSize(10);
       const footerText =
         "This document is the intellectual property of Serraria Cáceres. Unauthorized disclosure, reproduction, or distribution is strictly prohibited.";
+
       const textWidth =
         doc.getStringUnitWidth(footerText) *
         doc.internal.getFontSize() /
         doc.internal.scaleFactor;
       const xPosition = (pageWidth - textWidth) / 2;
       const yPosition = pageHeight - 10;
+
       doc.text(footerText, xPosition, yPosition, { maxWidth: pageWidth - 20 });
     },
   });
 
   doc.save("groupings.pdf");
+};
+
+const prepareChartData = (column) => {
+  // Normaliza a coluna para ser uma string
+  const colName = (typeof column === 'object' && column.value) ? column.value : column;
+  console.log('aqui', colName);
+  if (!colName) return { labels: [], datasets: [] };
+
+  const counts = {};
+  groupings.value.forEach(row => {
+    console.log('row', row);
+    // Checa se o valor é nulo ou undefined
+    const val = (row[colName] === null || row[colName] === undefined) ? 'Desconhecido' : row[colName];
+    counts[val] = (counts[val] || 0) + 1;
+  });
+
+  console.log(colName);
+  return {
+    labels: Object.keys(counts),
+    datasets: [
+      {
+        label: `Distribuição de ${colName}`,
+        backgroundColor: ['#f87979', '#a1cfff', '#caffbf'],
+        data: Object.values(counts)
+      }
+    ]
+  };
 };
 
 watch(() => props.schemaName, () => {
@@ -422,11 +354,14 @@ onMounted(fetchAvailableFields);
 
 .filter-block {
   width: 300px;
+  /* ajuste conforme necessário */
   min-height: 100px;
+  /* altura mínima (pode ser definida conforme a altura do filtro maior) */
   display: flex;
   flex-direction: column;
   justify-content: center;
   border: 1px solid #eee;
+  /* opcional: para visualização */
   padding: 8px;
   box-sizing: border-box;
 }

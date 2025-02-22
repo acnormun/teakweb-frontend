@@ -2,6 +2,7 @@
   <q-layout view="hHh lpR fF">
     <q-page-container>
       <q-page class="q-pa-md">
+        <!-- Card com filtros e exportações -->
         <q-card>
           <q-card-section class="row q-col-gutter-md">
             <q-select
@@ -18,7 +19,7 @@
 
             <!-- Container para todos os filtros -->
             <div class="filter-container">
-              <!-- Filtros que não são de data -->
+              <!-- Filtros não de data -->
               <div
                 v-for="key in nonDateFilterKeys"
                 :key="key"
@@ -102,6 +103,7 @@
           </q-card-section>
         </q-card>
 
+        <!-- Tabela -->
         <q-table
           flat
           bordered
@@ -118,6 +120,29 @@
             <strong>Total Items:</strong> {{ filteredGroupings.length }}
           </q-banner>
         </q-card-section>
+
+        <!-- Seção para o gráfico -->
+        <q-card class="q-mt-md">
+          <q-card-section>
+            <q-select
+              v-model="selectedChartColumn"
+              :options="chartColumnOptions"
+              label="Selecione a coluna para o gráfico"
+              outlined
+              dense
+            />
+          </q-card-section>
+          <q-card-section style="height: 400px;">
+            <!-- O uso da diretiva :key força a recriação do componente ao mudar a coluna -->
+            <ChartComponent
+              v-if="selectedChartColumn"
+              :key="selectedChartColumn"
+              :chart-type="computedChartType"
+              :chart-data="computedChartData"
+              :chart-options="chartOptions"
+            />
+          </q-card-section>
+        </q-card>
       </q-page>
     </q-page-container>
   </q-layout>
@@ -130,6 +155,7 @@ import Papa from "papaparse"; // CSV Export
 import jsPDF from "jspdf"; // PDF Export
 import "jspdf-autotable"; // Table Plugin for jsPDF
 import stringUtils from "src/utils/strTools";
+import ChartComponent from "../components/Chart.vue"; // Ajuste o caminho conforme necessário
 
 const props = defineProps({
   schemaName: {
@@ -146,7 +172,60 @@ const allColumns = ref([]);
 const filters = ref({});
 const graphqlEndpoint = "http://127.0.0.1:5000/graphql";
 
-// Fetch Available Fields
+// Variáveis para o gráfico
+const selectedChartColumn = ref(null);
+const chartOptions = {
+  responsive: true,
+  maintainAspectRatio: false
+};
+
+const chartColumnOptions = computed(() => {
+  return selectedColumns.value.map(col => ({ label: col, value: col }));
+});
+
+// Propriedades computadas para o ChartComponent
+const computedChartData = computed(() => prepareChartData(selectedChartColumn.value));
+const computedChartType = computed(() => determineChartType(selectedChartColumn.value));
+
+// Função para determinar o tipo de gráfico com base na coluna
+const determineChartType = (column) => {
+  if (!column || !groupings.value.length) return "bar";
+  const sampleValue = groupings.value[0][column];
+  if (typeof sampleValue === "number") return "bar";
+  if (typeof sampleValue === "string" && sampleValue.match(/^\d{4}-\d{2}-\d{2}/))
+    return "line";
+  return "pie";
+};
+
+// Função para preparar os dados para o gráfico
+const prepareChartData = (column) => {
+  // Normaliza a coluna para ser uma string
+  const colName = (typeof column === 'object' && column.value) ? column.value : column;
+  console.log('aqui', colName);
+  if (!colName) return { labels: [], datasets: [] };
+
+  const counts = {};
+  groupings.value.forEach(row => {
+    console.log('row', row);
+    // Checa se o valor é nulo ou undefined
+    const val = (row[colName] === null || row[colName] === undefined) ? 'Desconhecido' : row[colName];
+    counts[val] = (counts[val] || 0) + 1;
+  });
+
+  console.log(colName);
+  return {
+    labels: Object.keys(counts),
+    datasets: [
+      {
+        label: `Distribuição de ${colName}`,
+        backgroundColor: ['#f87979', '#a1cfff', '#caffbf'],
+        data: Object.values(counts)
+      }
+    ]
+  };
+};
+
+// Busca dos campos disponíveis
 const fetchAvailableFields = async () => {
   try {
     const response = await axios.post(graphqlEndpoint, {
@@ -176,6 +255,7 @@ const fetchAvailableFields = async () => {
     }));
 
     selectedColumns.value = fields;
+    selectedChartColumn.value = fields[0]; // Seleciona a primeira coluna para o gráfico
 
     fetchGroupings(fields);
   } catch (error) {
@@ -183,7 +263,7 @@ const fetchAvailableFields = async () => {
   }
 };
 
-// Fetch Data
+// Busca dos dados
 const fetchGroupings = async (fields) => {
   loading.value = true;
   try {
@@ -204,7 +284,7 @@ const fetchGroupings = async (fields) => {
   }
 };
 
-// Generate Filters Dynamically
+// Gera filtros dinamicamente
 const generateFilters = () => {
   const dateRegex = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/;
   if (!groupings.value.length) return;
@@ -273,19 +353,6 @@ const filteredColumns = computed(() => {
   return allColumns.value.filter((col) => selectedColumns.value.includes(col.field));
 });
 
-// Propriedades computadas para separar filtros
-const nonDateFilterKeys = computed(() => {
-  return Object.keys(filters.value).filter(
-    (key) => filters.value[key].type !== "date"
-  );
-});
-
-const dateFilterKeys = computed(() => {
-  return Object.keys(filters.value).filter(
-    (key) => filters.value[key].type === "date"
-  );
-});
-
 const exportCSV = () => {
   if (!filteredGroupings.value.length) return;
 
@@ -322,18 +389,16 @@ const exportPDF = () => {
     head: [tableHeaders],
     body: tableData,
     margin: { top: 15 },
-    didDrawPage: (data) => {
+    didDrawPage: () => {
       doc.setFontSize(10);
       const footerText =
         "This document is the intellectual property of Serraria Cáceres. Unauthorized disclosure, reproduction, or distribution is strictly prohibited.";
-
       const textWidth =
         doc.getStringUnitWidth(footerText) *
         doc.internal.getFontSize() /
         doc.internal.scaleFactor;
       const xPosition = (pageWidth - textWidth) / 2;
       const yPosition = pageHeight - 10;
-
       doc.text(footerText, xPosition, yPosition, { maxWidth: pageWidth - 20 });
     },
   });
@@ -356,12 +421,12 @@ onMounted(fetchAvailableFields);
 }
 
 .filter-block {
-  width: 300px; /* ajuste conforme necessário */
-  min-height: 100px; /* altura mínima (pode ser definida conforme a altura do filtro maior) */
+  width: 300px;
+  min-height: 100px;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  border: 1px solid #eee; /* opcional: para visualização */
+  border: 1px solid #eee;
   padding: 8px;
   box-sizing: border-box;
 }

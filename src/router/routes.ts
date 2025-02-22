@@ -1,9 +1,9 @@
-import { createRouter, createWebHistory, RouteRecordRaw } from 'vue-router';
-import axios from 'axios';
+import { createRouter, createWebHistory, RouteRecordRaw } from "vue-router";
+import axios from "axios";
 
-const graphqlEndpoint = 'http://127.0.0.1:5000/graphql';
+const graphqlEndpoint = "http://127.0.0.1:5000/graphql";
 
-// 🔹 Function to Fetch Available Schemas from GraphQL API
+// 🔹 Fetch Available Schemas from GraphQL API
 async function fetchSchemas(): Promise<string[]> {
   try {
     const response = await axios.post(graphqlEndpoint, {
@@ -22,16 +22,16 @@ async function fetchSchemas(): Promise<string[]> {
 // 🔹 Base Routes (Inside `MainLayout.vue`)
 const baseRoutes: RouteRecordRaw[] = [
   {
-    path: '/',
-    component: () => import('layouts/MainLayout.vue'), // ✅ Ensures sidebar is always present
+    path: "/",
+    component: () => import("layouts/MainLayout.vue"),
     children: [
-      { path: '', name: 'Home', component: () => import('pages/IndexPage.vue') }
+      { path: "", name: "Home", component: () => import("pages/IndexPage.vue") },
     ],
   },
   {
-    path: '/:catchAll(.*)*',
-    name: 'Not Found',
-    component: () => import('pages/ErrorNotFound.vue'),
+    path: "/:catchAll(.*)*",
+    name: "Not Found",
+    component: () => import("pages/ErrorNotFound.vue"),
   },
 ];
 
@@ -42,8 +42,9 @@ async function getRoutes(): Promise<RouteRecordRaw[]> {
   const dynamicRoutes: RouteRecordRaw[] = schemas.map((schema) => ({
     path: `/${schema}`,
     name: schema.charAt(0).toUpperCase() + schema.slice(1),
-    component: () => import('pages/Table.vue'),
-    props: (route) => ({ schemaName: schema }), // ✅ Pass schema name as a prop
+    component: () => import("pages/Table.vue"),
+    props: (route) => ({ schemaName: schema }),
+    meta: { requiresAuth: true }, // ✅ Protects dynamic routes
   }));
 
   // ✅ Add dynamic routes inside `MainLayout.vue`
@@ -52,12 +53,27 @@ async function getRoutes(): Promise<RouteRecordRaw[]> {
   return baseRoutes;
 }
 
-// 🔹 Create Vue Router and Ensure Dynamic Routes Are Loaded
-const routerPromise = getRoutes().then((routes) => {
-  return createRouter({
+// 🔹 Create Vue Router with Auth Middleware
+async function createRouterInstance() {
+  const routes = await getRoutes();
+
+  const router = createRouter({
     history: createWebHistory(),
     routes,
   });
-});
 
-export default routerPromise;
+  // 🔹 Navigation Guard: Protect Routes That Require Authentication
+  router.beforeEach((to, from, next) => {
+    const isAuthenticated = !!localStorage.getItem("auth_token");
+
+    if (to.meta.requiresAuth && !isAuthenticated) {
+      next("/"); // Redirect to home page for login
+    } else {
+      next();
+    }
+  });
+
+  return router;
+}
+
+export default createRouterInstance();

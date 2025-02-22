@@ -4,27 +4,55 @@
       <q-page class="q-pa-md">
         <q-card>
           <q-card-section class="row q-col-gutter-md">
-            <q-select v-model="selectedColumns" :options="columnOptions" multiple emit-value map-options
-              label="Select columns" outlined dense class="col-10" />
-            <template v-for="(filter, key) in filters" :key="key">
-              <!-- 🔹 Multi-Select Dropdown (Unchanged) -->
-              <q-select
-                v-if="filter.type === 'select'"
-                v-model="filter.value"
-                :options="filter.options"
-                :label="`Filter by ${key.replace(/_/g, ' ')}`"
-                outlined
-                multiple
-                dense
-                class="col-5"
-              />
+            <q-select
+              v-model="selectedColumns"
+              :options="columnOptions"
+              multiple
+              emit-value
+              map-options
+              label="Select columns"
+              outlined
+              dense
+              class="col-10"
+            />
 
-              <!-- 🔹 Date Range Picker (Single Input, Shows Selected Range) -->
-              <div v-else-if="filter.type === 'date'" class="col-5 column q-gutter-xs">
-                <q-item-label class="q-mb-xs text-grey-6">{{ key.replace(/_/g, ' ') }}</q-item-label>
-
+            <!-- Container para todos os filtros -->
+            <div class="filter-container">
+              <!-- Filtros que não são de data -->
+              <div
+                v-for="key in nonDateFilterKeys"
+                :key="key"
+                class="filter-block"
+              >
+                <q-select
+                  v-if="filters[key].type === 'select'"
+                  v-model="filters[key].value"
+                  :options="filters[key].options"
+                  :label="`Filter by ${key.replace(/_/g, ' ')}`"
+                  outlined
+                  multiple
+                  dense
+                />
                 <q-input
-                  v-model="filter.dateRangeText"
+                  v-else-if="filters[key].type === 'text'"
+                  v-model="filters[key].value"
+                  :label="`Search ${key.replace(/_/g, ' ')}`"
+                  outlined
+                  dense
+                />
+              </div>
+
+              <!-- Filtros de data -->
+              <div
+                v-for="key in dateFilterKeys"
+                :key="key"
+                class="filter-block"
+              >
+                <q-item-label class="q-mb-xs text-grey-6">
+                  {{ key.replace(/_/g, ' ') }}
+                </q-item-label>
+                <q-input
+                  v-model="filters[key].dateRangeText"
                   outlined
                   dense
                   readonly
@@ -33,44 +61,57 @@
                   @click="$refs[`datePopup-${key}`].show()"
                 >
                   <template v-slot:append>
-                    <q-icon name="event" class="cursor-pointer" @click.stop="$refs[`datePopup-${key}`].show()" />
+                    <q-icon
+                      name="event"
+                      class="cursor-pointer"
+                      @click.stop="$refs[`datePopup-${key}`].show()"
+                    />
                   </template>
                 </q-input>
-
-                <q-popup-proxy ref="datePopup" cover transition-show="scale" transition-hide="scale">
+                <q-popup-proxy
+                  :ref="`datePopup-${key}`"
+                  cover
+                  transition-show="scale"
+                  transition-hide="scale"
+                >
                   <q-date
-                    v-model="filter.dateRange"
+                    v-model="filters[key].dateRange"
                     range
                     mask="YYYY-MM-DD"
                     @update:model-value="updateDateRange(key)"
                   />
                 </q-popup-proxy>
               </div>
-
-              <!-- 🔹 Standard Text Search (Unchanged) -->
-              <q-input
-                v-else
-                v-model="filter.value"
-                :label="`Search ${key.replace(/_/g, ' ')}`"
-                outlined
-                dense
-                class="col-5"
-              />
-            </template>
+            </div>
           </q-card-section>
 
-
-          <!-- 🔹 Export Buttons -->
           <q-card-section class="row q-gutter-md">
-            <q-btn color="primary" icon="file_download" label="Export CSV" @click="exportCSV" class="q-mr-sm" />
-            <q-btn color="red" icon="picture_as_pdf" label="Export PDF" @click="exportPDF" />
+            <q-btn
+              color="primary"
+              icon="file_download"
+              label="Export CSV"
+              @click="exportCSV"
+              class="q-mr-sm"
+            />
+            <q-btn
+              color="red"
+              icon="picture_as_pdf"
+              label="Export PDF"
+              @click="exportPDF"
+            />
           </q-card-section>
         </q-card>
 
-        <q-table flat bordered :title='stringUtils.capitalizeFirstLetter(schemaName)' :rows="filteredGroupings" :columns="filteredColumns" row-key="id"
-          :loading="loading" />
+        <q-table
+          flat
+          bordered
+          :title="stringUtils.capitalizeFirstLetter(schemaName)"
+          :rows="filteredGroupings"
+          :columns="filteredColumns"
+          row-key="id"
+          :loading="loading"
+        />
 
-        <!-- 🔹 Display Total Count of Filtered Items -->
         <q-card-section class="text-right q-mt-md">
           <q-banner rounded class="bg-grey-2 text-dark">
             <q-icon name="list" size="20px" class="q-mr-sm" />
@@ -82,7 +123,6 @@
   </q-layout>
 </template>
 
-
 <script setup>
 import { ref, computed, onMounted, watch } from "vue";
 import axios from "axios";
@@ -91,7 +131,6 @@ import jsPDF from "jspdf"; // PDF Export
 import "jspdf-autotable"; // Table Plugin for jsPDF
 import stringUtils from "src/utils/strTools";
 
-// ✅ Receive `schemaName` from route props
 const props = defineProps({
   schemaName: {
     type: String,
@@ -123,7 +162,6 @@ const fetchAvailableFields = async () => {
 
     const fields = response.data?.data?.__type?.fields?.map((f) => f.name) || [];
 
-    // Convert fields into Quasar table format
     allColumns.value = fields.map((field) => ({
       name: field,
       label: field.replace(/_/g, " ").toUpperCase(),
@@ -157,9 +195,7 @@ const fetchGroupings = async (fields) => {
     }`;
 
     const response = await axios.post(graphqlEndpoint, { query });
-
     groupings.value = response.data?.data?.[props.schemaName] || [];
-
     generateFilters();
   } catch (error) {
     console.error("Error fetching groupings:", error);
@@ -170,20 +206,30 @@ const fetchGroupings = async (fields) => {
 
 // Generate Filters Dynamically
 const generateFilters = () => {
-  const firstRow = groupings.value[0] || {};
-  Object.keys(firstRow).forEach((key) => {
-    const uniqueValues = [...new Set(groupings.value.map((item) => item[key]))];
+  const dateRegex = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/;
+  if (!groupings.value.length) return;
 
-    if (key.toLowerCase().includes("date") || key.toLowerCase().includes("created_at") || key.toLowerCase().includes("updated_at")) {
+  const keys = Object.keys(groupings.value[0]);
+  keys.forEach((key) => {
+    const isDateField = groupings.value.some((row) => {
+      const value = row[key];
+      return typeof value === "string" && dateRegex.test(value);
+    });
+
+    if (isDateField) {
       filters.value[key] = {
         type: "date",
-        dateRange: null, // Stores the selected date range
-        dateRangeText: "Select Date Range", // ✅ Default placeholder
+        dateRange: null,
+        dateRangeText: "Select Date Range",
       };
     } else {
-      filters.value[key] = uniqueValues.length <= 5
-        ? { type: "select", options: uniqueValues, value: [] }
-        : { type: "text", value: "" };
+      const uniqueValues = [
+        ...new Set(groupings.value.map((item) => item[key])),
+      ];
+      filters.value[key] =
+        uniqueValues.length <= 5
+          ? { type: "select", options: uniqueValues, value: [] }
+          : { type: "text", value: "" };
     }
   });
 };
@@ -197,39 +243,49 @@ const updateDateRange = (key) => {
   }
 };
 
-
-
-// Filter Data
 const filteredGroupings = computed(() => {
   return groupings.value.filter((row) => {
     return Object.keys(filters.value).every((key) => {
       const filter = filters.value[key];
 
       if (filter.type === "select") {
-        return filter.value.length === 0 || filter.value.includes(row[key]); // ✅ Multi-select filtering
+        return filter.value.length === 0 || filter.value.includes(row[key]);
       } else if (filter.type === "text") {
-        return filter.value ? row[key]?.toString().toLowerCase().includes(filter.value.toLowerCase()) : true;
+        return filter.value
+          ? row[key]?.toString().toLowerCase().includes(filter.value.toLowerCase())
+          : true;
       } else if (filter.type === "date") {
-        if (!filter.dateRange || !filter.dateRange.from || !filter.dateRange.to) return true;
+        if (!filter.dateRange || !filter.dateRange.from || !filter.dateRange.to)
+          return true;
 
         const rowDate = new Date(row[key]);
         const startDate = filter.dateRange.from ? new Date(filter.dateRange.from) : null;
         const endDate = filter.dateRange.to ? new Date(filter.dateRange.to) : null;
 
-        return (!startDate || rowDate >= startDate) && (!endDate || rowDate <= endDate); // ✅ Date range filtering
+        return (!startDate || rowDate >= startDate) && (!endDate || rowDate <= endDate);
       }
-
       return true;
     });
   });
 });
 
-
 const filteredColumns = computed(() => {
   return allColumns.value.filter((col) => selectedColumns.value.includes(col.field));
 });
 
-// Export to CSV
+// Propriedades computadas para separar filtros
+const nonDateFilterKeys = computed(() => {
+  return Object.keys(filters.value).filter(
+    (key) => filters.value[key].type !== "date"
+  );
+});
+
+const dateFilterKeys = computed(() => {
+  return Object.keys(filters.value).filter(
+    (key) => filters.value[key].type === "date"
+  );
+});
+
 const exportCSV = () => {
   if (!filteredGroupings.value.length) return;
 
@@ -239,14 +295,12 @@ const exportCSV = () => {
 
   const csv = Papa.unparse(filteredData);
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-
   const link = document.createElement("a");
   link.href = URL.createObjectURL(blob);
   link.download = "groupings.csv";
   link.click();
 };
 
-// Export to PDF
 const exportPDF = () => {
   if (!filteredGroupings.value.length) return;
 
@@ -274,7 +328,9 @@ const exportPDF = () => {
         "This document is the intellectual property of Serraria Cáceres. Unauthorized disclosure, reproduction, or distribution is strictly prohibited.";
 
       const textWidth =
-        doc.getStringUnitWidth(footerText) * doc.internal.getFontSize() / doc.internal.scaleFactor;
+        doc.getStringUnitWidth(footerText) *
+        doc.internal.getFontSize() /
+        doc.internal.scaleFactor;
       const xPosition = (pageWidth - textWidth) / 2;
       const yPosition = pageHeight - 10;
 
@@ -285,10 +341,28 @@ const exportPDF = () => {
   doc.save("groupings.pdf");
 };
 
-// Watch for prop changes
 watch(() => props.schemaName, () => {
   fetchAvailableFields();
 });
 
 onMounted(fetchAvailableFields);
 </script>
+
+<style scoped>
+.filter-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.filter-block {
+  width: 300px; /* ajuste conforme necessário */
+  min-height: 100px; /* altura mínima (pode ser definida conforme a altura do filtro maior) */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  border: 1px solid #eee; /* opcional: para visualização */
+  padding: 8px;
+  box-sizing: border-box;
+}
+</style>

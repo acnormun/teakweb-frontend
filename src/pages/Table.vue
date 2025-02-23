@@ -458,10 +458,8 @@ const dateFilterKeys = computed(() => {
 // ================================
 watch(() => props.schemaName, () => {
   fetchAvailableFields();
-});
-watch(() => props.schemaName, () => {
-  filters.value = {}; // Reseta os filtros
-  fetchAvailableFields(); // Rebusca os campos disponíveis para a nova tabela
+  filters.value = {};
+  fetchAvailableFields();
 });
 
 onMounted(fetchAvailableFields);

@@ -284,10 +284,8 @@ const exportPDFWithChart = () => {
   const pageWidth = doc.internal.pageSize.width;
   const pageHeight = doc.internal.pageSize.height;
 
-  // Adiciona o título do relatório centralizado
   doc.text('Groupings List', pageWidth / 2, 10, { align: 'center' });
 
-  // Gera a tabela no PDF
   const tableData = filteredGroupings.value.map((row) =>
     selectedColumns.value.map((col) => row[col] || '')
   );
@@ -302,42 +300,34 @@ const exportPDFWithChart = () => {
     margin: { top: 15 },
   });
 
-  // Espera o gráfico renderizar antes de capturá-lo
   setTimeout(() => {
     const chartElement = document.querySelector('canvas');
     if (chartElement) {
       const chartImage = chartElement.toDataURL('image/png', 1.0);
 
-      // Obtém as dimensões originais do canvas
       const originalWidth = chartElement.width;
       const originalHeight = chartElement.height;
       const aspectRatio = originalHeight / originalWidth;
 
-      // Define os tamanhos máximos permitidos dentro do PDF
-      const maxWidth = pageWidth - 40; // Margens de 20px em cada lado
-      const maxHeight = pageHeight / 2; // No máximo metade da página
+      const maxWidth = pageWidth - 40;
+      const maxHeight = pageHeight / 2;
 
-      // Ajusta o tamanho do gráfico mantendo a proporção
-      let imgWidth = maxWidth * 1.5; // Aumenta 1.5x
-      let imgHeight = imgWidth * aspectRatio; // Mantém a proporção correta
+      let imgWidth = maxWidth;
+      let imgHeight = imgWidth * aspectRatio;
 
-      // Se a altura for maior que o máximo permitido, ajusta a largura proporcionalmente
       if (imgHeight > maxHeight) {
         imgHeight = maxHeight;
         imgWidth = imgHeight / aspectRatio;
       }
 
-      // Garante que o gráfico fique abaixo da tabela e centralizado
       let startY = doc.autoTable.previous.finalY + 20;
       if (startY + imgHeight > pageHeight - 20) {
         doc.addPage();
         startY = 20;
       }
 
-      // Centraliza o gráfico no PDF
       const centerX = (pageWidth - imgWidth) / 2;
 
-      // Adiciona a imagem do gráfico ao PDF
       doc.addImage(chartImage, 'PNG', centerX, startY, imgWidth, imgHeight);
       doc.save('groupings_with_chart.pdf');
     }

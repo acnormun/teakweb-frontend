@@ -460,9 +460,9 @@ watch(() => props.schemaName, () => {
   fetchAvailableFields();
 });
 watch(() => props.schemaName, () => {
-  filters.value = {};
-  fetchAvailableFields();
-
+  filters.value = {}; // Reseta os filtros
+  fetchAvailableFields(); // Rebusca os campos disponíveis para a nova tabela
+});
 
 onMounted(fetchAvailableFields);
 </script>

@@ -8,6 +8,8 @@
 import { ref, onMounted, watch } from 'vue';
 import { Chart, registerables } from 'chart.js';
 import ChartDataLabels from 'chartjs-plugin-datalabels';
+
+// Registra os módulos necessários do Chart.js e o plugin DataLabels
 Chart.register(...registerables, ChartDataLabels);
 
 const props = defineProps({
@@ -28,6 +30,7 @@ const props = defineProps({
 const canvas = ref(null);
 const chart = ref(null);
 
+// Função para renderizar o gráfico
 const renderChart = () => {
   if (canvas.value) {
     chart.value = new Chart(canvas.value, {
@@ -37,18 +40,59 @@ const renderChart = () => {
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
-          // Desabilita a exibição das labels diretamente no gráfico
+          // Exibe labels dentro do gráfico
           datalabels: {
-            display: false
+            color: '#fff',
+            anchor: 'center',
+            align: 'center',
+            font: {
+              weight: 'bold'
+            },
+            formatter: (value, context) => {
+              let label = context.chart.data.labels[context.dataIndex];
+
+              // Corrige problema de `[Object object]`
+              if (typeof label === 'object') {
+                label = JSON.stringify(label);
+              }
+
+              const dataArr = context.dataset.data;
+              const sum = dataArr.reduce((a, b) => a + b, 0);
+              if (!sum || isNaN(sum)) return `${label}: 0%`; // Evita NaN%
+
+              // Verifica se é um gráfico de barras e pega `y`, senão usa `value`
+              const parsedValue =
+                props.chartType.includes('bar') && typeof context.parsed === 'object'
+                  ? context.parsed.y
+                  : value;
+
+              const percentage = ((parsedValue / sum) * 100).toFixed(2);
+              return `${label}: ${percentage}%`;
+            }
           },
+          // Configuração do tooltip
           tooltip: {
             callbacks: {
               label: (context) => {
-                const label = context.label || '';
+                let label = context.label || '';
+
+                // Corrige problema de `[Object object]`
+                if (typeof label === 'object') {
+                  label = JSON.stringify(label);
+                }
+
                 const dataArr = context.chart.data.datasets[0].data;
                 const sum = dataArr.reduce((a, b) => a + b, 0);
-                const percentage = ((context.parsed / sum) * 100).toFixed(2);
-                return `${label}: ${context.parsed} (${percentage}%)`;
+                if (!sum || isNaN(sum)) return `${label}: 0 (0%)`; // Evita NaN%
+
+                // Verifica se é um gráfico de barras e pega `y`, senão usa `parsed`
+                const parsedValue =
+                  props.chartType.includes('bar') && typeof context.parsed === 'object'
+                    ? context.parsed.y
+                    : context.parsed;
+
+                const percentage = ((parsedValue / sum) * 100).toFixed(2);
+                return `${label}: ${parsedValue} (${percentage}%)`;
               }
             }
           }
@@ -59,6 +103,7 @@ const renderChart = () => {
   }
 };
 
+// Atualiza os dados do gráfico quando há mudanças
 const updateChart = () => {
   if (chart.value) {
     chart.value.data = props.chartData;
@@ -70,6 +115,7 @@ onMounted(() => {
   renderChart();
 });
 
+// Observa mudanças nos dados do gráfico e o atualiza automaticamente
 watch(() => props.chartData, () => {
   updateChart();
 }, { deep: true });

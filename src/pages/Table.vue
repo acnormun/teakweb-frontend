@@ -10,38 +10,18 @@
           <!-- Sub-Seção: Seletor de Colunas e Filtros -->
           <q-card-section class="row q-col-gutter-md">
             <!-- Seletor de Colunas -->
-            <q-select
-              v-model="selectedColumns"
-              :options="columnOptions"
-              multiple
-              emit-value
-              map-options
-              label="Select columns"
-              outlined
-              dense
-              class="col-10"
-            />
+            <q-select v-model="selectedColumns" :options="columnOptions" multiple emit-value map-options
+              label="Select columns" outlined dense class="col-10" />
 
             <!-- Container de Filtros -->
             <div class="filter-container">
               <!-- Filtros que não são de data -->
               <div v-for="key in nonDateFilterKeys" :key="key" class="filter-block">
-                <q-select
-                  v-if="filters[key].type === 'select'"
-                  v-model="filters[key].value"
-                  :options="filters[key].options"
-                  :label="`Filter by ${key.replace(/_/g, ' ')}`"
-                  outlined
-                  multiple
-                  dense
-                />
-                <q-input
-                  v-else-if="filters[key].type === 'text'"
-                  v-model="filters[key].value"
-                  :label="`Search ${key.replace(/_/g, ' ')}`"
-                  outlined
-                  dense
-                />
+                <q-select v-if="filters[key].type === 'select'" v-model="filters[key].value"
+                  :options="filters[key].options" :label="`Filter by ${key.replace(/_/g, ' ')}`" outlined multiple
+                  dense />
+                <q-input v-else-if="filters[key].type === 'text'" v-model="filters[key].value"
+                  :label="`Search ${key.replace(/_/g, ' ')}`" outlined dense />
               </div>
 
               <!-- Filtros de Data -->
@@ -49,35 +29,15 @@
                 <q-item-label class="q-mb-xs text-grey-6">
                   {{ key.replace(/_/g, ' ') }}
                 </q-item-label>
-                <q-input
-                  v-model="filters[key].dateRangeText"
-                  outlined
-                  dense
-                  readonly
-                  label="Select Date Range"
-                  class="cursor-pointer"
-                  @click="$refs[`datePopup-${key}`].show()"
-                >
+                <q-input v-model="filters[key].dateRangeText" outlined dense readonly label="Select Date Range"
+                  class="cursor-pointer" @click="$refs[`datePopup-${key}`].show()">
                   <template v-slot:append>
-                    <q-icon
-                      name="event"
-                      class="cursor-pointer"
-                      @click.stop="$refs[`datePopup-${key}`].show()"
-                    />
+                    <q-icon name="event" class="cursor-pointer" @click.stop="$refs[`datePopup-${key}`].show()" />
                   </template>
                 </q-input>
-                <q-popup-proxy
-                  :ref="`datePopup-${key}`"
-                  cover
-                  transition-show="scale"
-                  transition-hide="scale"
-                >
-                  <q-date
-                    v-model="filters[key].dateRange"
-                    range
-                    mask="YYYY-MM-DD"
-                    @update:model-value="updateDateRange(key)"
-                  />
+                <q-popup-proxy :ref="`datePopup-${key}`" cover transition-show="scale" transition-hide="scale">
+                  <q-date v-model="filters[key].dateRange" range mask="YYYY-MM-DD"
+                    @update:model-value="updateDateRange(key)" />
                 </q-popup-proxy>
               </div>
             </div>
@@ -85,32 +45,15 @@
 
           <!-- Sub-Seção: Botões de Exportação -->
           <q-card-section class="row q-gutter-md">
-            <q-btn
-              color="primary"
-              icon="file_download"
-              label="Export CSV"
-              @click="exportCSV"
-              class="q-mr-sm"
-            />
-            <q-btn
-              color="red"
-              icon="picture_as_pdf"
-              label="Export PDF"
-              @click="exportPDF"
-            />
+            <q-btn color="primary" icon="file_download" label="Export CSV" @click="exportCSV" class="q-mr-sm" />
+            <q-btn color="red" icon="picture_as_pdf" label="Export PDF" @click="exportPDF" />
+            <q-btn color="red" icon="bar_chart" label="Export PDF with Chart" @click="exportPDFWithChart" />
           </q-card-section>
         </q-card>
 
         <!-- Seção: Tabela de Dados -->
-        <q-table
-          flat
-          bordered
-          :title="stringUtils.capitalizeFirstLetter(schemaName)"
-          :rows="filteredGroupings"
-          :columns="filteredColumns"
-          row-key="id"
-          :loading="loading"
-        />
+        <q-table flat bordered :title="stringUtils.capitalizeFirstLetter(schemaName)" :rows="filteredGroupings"
+          :columns="filteredColumns" row-key="id" :loading="loading" />
 
         <!-- Seção: Exibição do Total de Itens -->
         <q-card-section class="text-right q-mt-md">
@@ -123,22 +66,12 @@
         <!-- Seção: Gráfico -->
         <q-card class="q-mt-md">
           <q-card-section>
-            <q-select
-              v-model="selectedChartColumn"
-              :options="chartColumnOptions"
-              label="Selecione a coluna para o gráfico"
-              outlined
-              dense
-            />
+            <q-select v-model="selectedChartColumn" :options="chartColumnOptions"
+              label="Selecione a coluna para o gráfico" outlined dense />
           </q-card-section>
           <q-card-section style="height: 400px;">
-            <ChartComponent
-              v-if="selectedChartColumn"
-              :key="selectedChartColumn"
-              :chart-type="computedChartType"
-              :chart-data="computedChartData"
-              :chart-options="chartOptions"
-            />
+            <ChartComponent v-if="selectedChartColumn" :key="selectedChartColumn" :chart-type="computedChartType"
+              :chart-data="computedChartData" :chart-options="chartOptions" />
           </q-card-section>
         </q-card>
 
@@ -343,6 +276,75 @@ const exportPDF = () => {
   doc.save('groupings.pdf');
 };
 
+// Exporta os dados filtrados como PDF incluindo o gráfico
+const exportPDFWithChart = () => {
+  if (!filteredGroupings.value.length) return;
+
+  const doc = new jsPDF();
+  const pageWidth = doc.internal.pageSize.width;
+  const pageHeight = doc.internal.pageSize.height;
+
+  // Adiciona o título do relatório centralizado
+  doc.text('Groupings List', pageWidth / 2, 10, { align: 'center' });
+
+  // Gera a tabela no PDF
+  const tableData = filteredGroupings.value.map((row) =>
+    selectedColumns.value.map((col) => row[col] || '')
+  );
+  const tableHeaders = selectedColumns.value.map((col) =>
+    col.replace(/_/g, ' ').toUpperCase()
+  );
+
+  doc.autoTable({
+    head: [tableHeaders],
+    body: tableData,
+    startY: 20,
+    margin: { top: 15 },
+  });
+
+  // Espera o gráfico renderizar antes de capturá-lo
+  setTimeout(() => {
+    const chartElement = document.querySelector('canvas');
+    if (chartElement) {
+      const chartImage = chartElement.toDataURL('image/png', 1.0);
+
+      // Obtém as dimensões originais do canvas
+      const originalWidth = chartElement.width;
+      const originalHeight = chartElement.height;
+      const aspectRatio = originalHeight / originalWidth;
+
+      // Define os tamanhos máximos permitidos dentro do PDF
+      const maxWidth = pageWidth - 40; // Margens de 20px em cada lado
+      const maxHeight = pageHeight / 2; // No máximo metade da página
+
+      // Ajusta o tamanho do gráfico mantendo a proporção
+      let imgWidth = maxWidth * 1.5; // Aumenta 1.5x
+      let imgHeight = imgWidth * aspectRatio; // Mantém a proporção correta
+
+      // Se a altura for maior que o máximo permitido, ajusta a largura proporcionalmente
+      if (imgHeight > maxHeight) {
+        imgHeight = maxHeight;
+        imgWidth = imgHeight / aspectRatio;
+      }
+
+      // Garante que o gráfico fique abaixo da tabela e centralizado
+      let startY = doc.autoTable.previous.finalY + 20;
+      if (startY + imgHeight > pageHeight - 20) {
+        doc.addPage();
+        startY = 20;
+      }
+
+      // Centraliza o gráfico no PDF
+      const centerX = (pageWidth - imgWidth) / 2;
+
+      // Adiciona a imagem do gráfico ao PDF
+      doc.addImage(chartImage, 'PNG', centerX, startY, imgWidth, imgHeight);
+      doc.save('groupings_with_chart.pdf');
+    }
+  }, 500);
+};
+
+
 // ================================
 // FUNÇÕES: GRÁFICO
 // ================================
@@ -374,7 +376,6 @@ const prepareChartData = (column) => {
   const fullDateRegex = /^\d{4}-\d{2}-\d{2}/;
   const monthYearRegex = /^\d{2}-\d{4}$/;
   const isDateColumn = typeof sampleValue === 'string' && (fullDateRegex.test(sampleValue) || monthYearRegex.test(sampleValue));
-  console.log(JSON.stringify(isDateColumn));
   if (isDateColumn) {
     if (monthYearRegex.test(sampleValue)) {
       data.forEach(row => {
@@ -389,7 +390,7 @@ const prepareChartData = (column) => {
       const minDate = new Date(Math.min(...dates));
       const maxDate = new Date(Math.max(...dates));
       const groupByDay = (minDate.getFullYear() === maxDate.getFullYear() &&
-                          minDate.getMonth() === maxDate.getMonth());
+        minDate.getMonth() === maxDate.getMonth());
       data.forEach(row => {
         const dateObj = new Date(row[colName]);
         if (isNaN(dateObj)) return;

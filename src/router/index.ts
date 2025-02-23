@@ -16,7 +16,5 @@ export default route(async function (/* { store, ssrContext } */) {
 
   // ✅ Wait for routes to be ready before creating the router
   const router = await routerPromise;
-
-  console.log(router.getRoutes())
   return router;
 });

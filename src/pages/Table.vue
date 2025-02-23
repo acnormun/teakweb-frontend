@@ -458,6 +458,8 @@ const dateFilterKeys = computed(() => {
 // ================================
 watch(() => props.schemaName, () => {
   fetchAvailableFields();
+  filters.value = {};
+  fetchAvailableFields();
 });
 
 onMounted(fetchAvailableFields);

@@ -5,14 +5,14 @@
         <div class="text-h6">Welcome</div>
       </q-card-section>
 
-      <!-- 🔹 Show Login Form if NOT Authenticated -->
-      <q-card-section v-if="!isAuthenticated">
+      <!-- 🔹 Mostra Login se NÃO estiver autenticado -->
+      <q-card-section v-if="!authStore.token">
         <q-input v-model="username" label="Username" outlined dense />
         <q-input v-model="password" label="Password" outlined dense type="password" class="q-mt-md" />
       </q-card-section>
 
       <q-card-actions align="right">
-        <q-btn v-if="!isAuthenticated" color="primary" label="Login" @click="login" :loading="loading" />
+        <q-btn v-if="!authStore.token" color="primary" label="Login" @click="login" :loading="loading" />
         <q-btn v-else color="negative" label="Logout" @click="logout" />
       </q-card-actions>
 
@@ -24,18 +24,18 @@
 </template>
 
 <script setup>
-import { ref, computed } from "vue";
+import { ref } from "vue";
 import { useRouter } from "vue-router";
 import axios from "axios";
+import { Notify } from "quasar";
+import { useAuthStore } from "../stores/auth"; // 🔥 Importa a Store
 
+const authStore = useAuthStore();
 const username = ref("");
 const password = ref("");
 const loading = ref(false);
 const error = ref(null);
 const router = useRouter();
-
-// 🔹 Check if User is Authenticated
-const isAuthenticated = computed(() => !!localStorage.getItem("auth_token"));
 
 // 🔹 Login Function
 const login = async () => {
@@ -48,10 +48,24 @@ const login = async () => {
       password: password.value,
     });
 
-    localStorage.setItem("auth_token", response.data.auth_token);
-    router.push("/"); // Redirect to Home Page
+    authStore.setToken(response.data.auth_token); // 🔥 Atualiza a store
+
+    Notify.create({
+      type: "positive",
+      message: "Login bem-sucedido!",
+      position: "bottom",
+      timeout: 3000,
+    });
+
+    // NÃO precisa dar refresh, pois o Vue reativa a tela automaticamente
   } catch (err) {
-    error.value = err.response?.data?.error || "Login failed";
+    error.value = err.response?.data?.error || "Login falhou";
+
+    Notify.create({
+      type: "negative",
+      message: error.value,
+      position: "bottom",
+    });
   } finally {
     loading.value = false;
   }
@@ -59,7 +73,14 @@ const login = async () => {
 
 // 🔹 Logout Function
 const logout = () => {
-  localStorage.removeItem("auth_token");
-  router.push("/");
+  authStore.logout(); // 🔥 Atualiza a store
+
+  Notify.create({
+    type: "negative",
+    message: "Logout bem-sucedido!",
+    position: "bottom",
+  });
+
+  // NÃO precisa dar refresh!
 };
 </script>

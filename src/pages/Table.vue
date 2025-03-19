@@ -342,18 +342,18 @@ const exportPDFWithChart = () => {
 // Determina o tipo de gráfico com base na coluna selecionada
 const determineChartType = (column) => {
   const colName = (typeof column === 'object' && column.value) ? column.value : column;
-  if (!colName || !groupings.value.length) return "bar";
+  if (!colName || !groupings.value.length) return 'bar';
   const sampleValue = groupings.value[0][colName];
   const fullDateRegex = /^\d{4}-\d{2}-\d{2}/;
   const monthYearRegex = /^\d{2}-\d{4}$/;
-  if (typeof sampleValue === "number") return "bar";
+  if (typeof sampleValue === 'number') return 'bar';
   if (
-    typeof sampleValue === "string" &&
+    typeof sampleValue === 'string' &&
     (fullDateRegex.test(sampleValue) || monthYearRegex.test(sampleValue))
   ) {
-    return "bar";
+    return 'bar';
   }
-  return "pie";
+  return 'pie';
 };
 
 // Prepara os dados para o gráfico com base na coluna selecionada

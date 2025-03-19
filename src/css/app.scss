@@ -2,3 +2,21 @@
 *{
   padding: 0;
 }
+
+.filter-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+/* Estilos para cada Bloco de Filtro */
+.filter-block {
+  width: 300px;
+  min-height: 100px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  border: 1px solid #eee;
+  padding: 8px;
+  box-sizing: border-box;
+}

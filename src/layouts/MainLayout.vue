@@ -3,6 +3,7 @@
     <q-header elevated>
       <q-toolbar>
         <q-btn
+          v-if="isAuthenticated"
           flat
           dense
           round
@@ -17,10 +18,14 @@
       </q-toolbar>
     </q-header>
 
-    <q-drawer v-model="leftDrawerOpen" show-if-above bordered>
+    <q-drawer
+      v-if="isAuthenticated"
+      v-model="leftDrawerOpen"
+      show-if-above
+      bordered
+    >
       <q-list>
         <q-item-label header> Navigation </q-item-label>
-
         <EssentialLink v-for="link in filteredLinks" :key="link.title" v-bind="link" />
       </q-list>
     </q-drawer>
@@ -36,13 +41,17 @@
 import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import EssentialLink, { EssentialLinkProps } from 'components/EssentialLink.vue';
+import { useAuthStore } from '../stores/auth'; // Make sure to create this store
 
 defineOptions({
   name: 'MainLayout'
 });
 
 const router = useRouter();
+const authStore = useAuthStore();
 const leftDrawerOpen = ref(false);
+
+const isAuthenticated = computed(() => !!authStore.token);
 
 // 🔹 Generate dynamic links from router routes
 const linksList = computed((): EssentialLinkProps[] => {
@@ -67,8 +76,11 @@ const linksList = computed((): EssentialLinkProps[] => {
   return [...links, ...dynamicLinks]; // ✅ Always include home at the top
 });
 
-// 🔹 Ensure the list only includes valid navigation links
-const filteredLinks = computed(() => linksList.value.filter(link => link.link !== ''));
+// Only show filtered links if authenticated
+const filteredLinks = computed(() => {
+  if (!isAuthenticated.value) return [];
+  return linksList.value.filter(link => link.link !== '');
+});
 
 function toggleLeftDrawer() {
   leftDrawerOpen.value = !leftDrawerOpen.value;

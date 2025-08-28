@@ -44,7 +44,6 @@ async function getRoutes(): Promise<RouteRecordRaw[]> {
     name: schema.charAt(0).toUpperCase() + schema.slice(1),
     component: () => import("pages/Table.vue"),
     props: (route) => ({ schemaName: schema }),
-    meta: { requiresAuth: true }, // ✅ Protects dynamic routes
   }));
 
   // ✅ Add dynamic routes inside `MainLayout.vue`
@@ -53,24 +52,13 @@ async function getRoutes(): Promise<RouteRecordRaw[]> {
   return baseRoutes;
 }
 
-// 🔹 Create Vue Router with Auth Middleware
+// 🔹 Create Vue Router
 async function createRouterInstance() {
   const routes = await getRoutes();
 
   const router = createRouter({
     history: createWebHistory(),
     routes,
-  });
-
-  // 🔹 Navigation Guard: Protect Routes That Require Authentication
-  router.beforeEach((to, from, next) => {
-    const isAuthenticated = !!localStorage.getItem("auth_token");
-
-    if (to.meta.requiresAuth && !isAuthenticated) {
-      next("/"); // Redirect to home page for login
-    } else {
-      next();
-    }
   });
 
   return router;
